@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helios | All-in-One Discord Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lenis Smooth Scroll -->
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+    <!-- GSAP for advanced micro-animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Patrick+Hand&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CORE VARIABLES --- */
+        :root {
+            --paper: #fdfbf7;
+            --ink: #2a2a2a;
+            --accent: #5865F2;
+            --grid-color: rgba(0, 0, 0, 0.08);
+        }
+
+        /* --- GLOBAL & TEXTURE --- */
+        body {
+            background-color: var(--paper);
+            color: var(--ink);
+            font-family: 'Patrick Hand', cursive;
+            overflow-x: hidden;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 30px 30px;
+            cursor: crosshair;
+        }
+
+        /* Grain Texture */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        h1, h2, h3, h4 { font-family: 'Gochi Hand', cursive; }
+        ::selection { background: var(--accent); color: white; }
+
+        /* Smooth Scroll Setup */
+        html.lenis { height: auto; }
+        .lenis.lenis-smooth { scroll-behavior: auto; }
+        .lenis.lenis-stopped { overflow: hidden; }
+
+        /* --- COMPONENTS --- */
+        .sketch-box {
+            background: white;
+            border: 3px solid var(--ink);
+            box-shadow: 6px 6px 0px 0px var(--ink);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+            position: relative;
+            z-index: 10;
+            transform-style: preserve-3d;
+        }
+
+        .sketch-box:hover, .sketch-box.mobile-active {
+            transform: translate(-4px, -4px) rotate(-1deg);
+            box-shadow: 12px 12px 0px 0px var(--ink);
+            z-index: 20;
+        }
+
+        .sketch-btn {
+            background: var(--ink);
+            color: white;
+            border: 2px solid transparent;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            user-select: none;
+            cursor: pointer;
+        }
+        
+        .sketch-btn:hover { transform: scale(1.05) rotate(2deg); }
+        .sketch-btn:active { transform: scale(0.95); }
+
+        .sketch-input {
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid var(--ink);
+            font-family: 'Patrick Hand', cursive;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .sketch-input:focus { border-bottom-color: var(--accent); }
+
+        /* --- ANIMATIONS --- */
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(30px) rotate(2deg);
+            transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .reveal-on-scroll.is-visible { opacity: 1; transform: translateY(0) rotate(0deg); }
+
+        /* Stagger Delays */
+        .stagger-delay:nth-child(1) { transition-delay: 0.05s; }
+        .stagger-delay:nth-child(2) { transition-delay: 0.1s; }
+        .stagger-delay:nth-child(3) { transition-delay: 0.15s; }
+        .stagger-delay:nth-child(4) { transition-delay: 0.2s; }
+        .stagger-delay:nth-child(5) { transition-delay: 0.25s; }
+        .stagger-delay:nth-child(6) { transition-delay: 0.3s; }
+        .stagger-delay:nth-child(n+7) { transition-delay: 0.35s; }
+
+        .wobbly-text { filter: url(#wavy); }
+        .page-transition { animation: bounceIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.95) translateY(20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+        /* Floating Animation */
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+        .animate-float { animation: float 4s ease-in-out infinite; }
+        .animate-float-delayed { animation: float 4s ease-in-out infinite 2s; }
+
+        /* Intro & Shake */
+        #intro-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: var(--paper); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease-out; pointer-events: all;
+        }
+        .intro-done { opacity: 0; pointer-events: none !important; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) rotate(-1deg); }
+            20%, 40%, 60%, 80% { transform: translateX(5px) rotate(1deg); }
+        }
+        .shake-active { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        
+        .cracks-svg {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.5);
+            width: 100vw; height: 100vh; opacity: 0; transition: all 0.1s;
+        }
+        .cracks-active { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+
+        /* 3D Wrapper */
+        #content-wrapper { transform-style: preserve-3d; perspective: 1200px; will-change: transform; }
+
+        @media (max-width: 768px) {
+            .sketch-box:hover { transform: none; box-shadow: 6px 6px 0px 0px var(--ink); }
+            .sketch-box.mobile-active {
+                transform: translate(-3px, -3px) scale(1.02);
+                box-shadow: 10px 10px 0px 0px var(--ink);
+                border-color: var(--accent);
+            }
+            .cursor-pointer { cursor: default !important; }
+            /* Mobile Card Adjustments */
+            .tilt-card { width: 100% !important; max-width: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <svg style="position: absolute; width: 0; height: 0;">
+        <filter id="wavy"><feTurbulence x="0" y="0" baseFrequency="0.02" numOctaves="5" seed="2" /><feDisplacementMap in="SourceGraphic" scale="3" /></filter>
+    </svg>
+
+    <!-- INTRO -->
+    <div id="intro-overlay">
+        <div class="rabbit-container relative w-64 h-64">
+            <!-- Rabbit -->
+            <svg class="rabbit-svg w-full h-full" viewBox="0 0 200 200" fill="none" stroke="black" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                <g id="rabbit-body">
+                    <path d="M60 180 Q40 100 100 100 Q160 100 140 180 Z" fill="white" />
+                    <path d="M80 100 Q70 20 90 20 Q100 60 95 100" fill="white" />
+                    <path d="M120 100 Q130 20 110 20 Q100 60 105 100" fill="white" />
+                    <circle cx="90" cy="130" r="5" fill="black" /><circle cx="110" cy="130" r="5" fill="black" />
+                    <path d="M100 140 L95 145 L105 145 Z" fill="pink" />
+                    <path d="M80 145 L60 150" /><path d="M120 145 L140 150" />
+                </g>
+            </svg>
+            
+            <!-- Impact Blast (Hidden until hit) -->
+            <div id="impact-blast" class="absolute top-10 left-10 w-44 h-44 opacity-0 pointer-events-none z-20">
+                <svg viewBox="0 0 100 100" fill="#ffeb3b" stroke="black" stroke-width="2">
+                    <path d="M50 0 L60 35 L95 30 L70 55 L90 85 L55 70 L30 95 L35 60 L0 50 L35 40 L10 10 L45 30 Z" />
+                </svg>
+            </div>
+
+            <!-- Hammer -->
+            <div class="hammer-wrapper absolute -top-20 -right-20 w-48 h-48 opacity-0" style="transform-origin: bottom left;">
+                <svg viewBox="0 0 120 120" fill="none" overflow="visible">
+                    <defs>
+                        <linearGradient id="gamerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#00f2ff" />
+                            <stop offset="50%" stop-color="#00ff00" />
+                            <stop offset="100%" stop-color="#ff00ff" />
+                        </linearGradient>
+                        <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="2" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+                    
+                    <!-- RGB Glowing Handle -->
+                    <path d="M85 95 L35 45" stroke="url(#gamerGradient)" stroke-width="10" stroke-linecap="round" filter="url(#neonGlow)" />
+                    <path d="M85 95 L35 45" stroke="white" stroke-width="2" stroke-opacity="0.5" stroke-linecap="round" />
+
+                    <!-- Gaming Hammer Head (Rotated relative to handle) -->
+                    <g transform="translate(35, 45) rotate(-45)">
+                        <!-- Gold Impact Faces -->
+                        <rect x="-30" y="-15" width="10" height="30" rx="2" fill="#ffd700" stroke="black" stroke-width="2" />
+                        <rect x="20" y="-15" width="10" height="30" rx="2" fill="#ffd700" stroke="black" stroke-width="2" />
+                        
+                        <!-- Red Body -->
+                        <rect x="-22" y="-22" width="44" height="44" rx="6" fill="#ff0044" stroke="black" stroke-width="3" />
+                        
+                        <!-- Shine -->
+                        <path d="M-15 -15 L15 -15" stroke="white" stroke-width="3" opacity="0.4" stroke-linecap="round" />
+                        
+                        <!-- Lightning Icon -->
+                        <path d="M-2 -8 L8 -8 L2 2 L8 2 L-5 15 L0 0 L-8 0 Z" fill="#ffff00" stroke="black" stroke-width="1" />
+                    </g>
+                </svg>
+            </div>
+        </div>
+
+        <h2 id="intro-loading" class="mt-8 text-2xl font-bold animate-pulse">Summoning Helios...</h2>
+        
+        <svg class="cracks-svg pointer-events-none" id="cracks" viewBox="0 0 500 500" fill="none" stroke="black" stroke-width="2">
+            <path d="M250 250 L100 100 M250 250 L400 100 M250 250 L100 400 M250 250 L400 400" /><path d="M250 250 L250 50 M250 250 L50 250 M250 250 L450 250" /><circle cx="250" cy="250" r="40" stroke-dasharray="10 5" /><circle cx="250" cy="250" r="100" stroke-dasharray="20 10" transform="rotate(15 250 250)" />
+        </svg>
+        
+        <style>
+            /* Rabbit Idle then Squish */
+            .rabbit-svg { animation: rabbitBounce 2.2s linear forwards; }
+            @keyframes rabbitBounce {
+                0% { transform: translateY(300px); }
+                20% { transform: translateY(0); }
+                85% { transform: translateY(0) scale(1, 1); }
+                86% { transform: translateY(70px) scale(1.6, 0.1); } /* INSTANT SQUISH */
+                100% { transform: translateY(70px) scale(1.6, 0.1); opacity: 0; }
+            }
+
+            /* Hammer Swing */
+            .hammer-wrapper { animation: hammerHit 2.5s ease-in-out forwards; }
+            @keyframes hammerHit {
+                0% { opacity: 0; transform: rotate(0deg); }
+                30% { opacity: 1; transform: rotate(0deg); }
+                60% { transform: rotate(45deg); } /* Wind UP */
+                75% { transform: rotate(45deg); } /* Hold... */
+                78% { transform: rotate(-60deg) scale(1.2); } /* SMASH DOWN FAST */
+                85% { transform: rotate(-60deg) scale(1.2); opacity: 1; }
+                100% { transform: rotate(-60deg) scale(1.2); opacity: 0; }
+            }
+
+            /* Blast Effect */
+            #impact-blast { animation: blast 0.5s linear 2.2s forwards; }
+            @keyframes blast {
+                0% { opacity: 0; transform: scale(0.5); }
+                10% { opacity: 1; transform: scale(1.5) rotate(15deg); }
+                100% { opacity: 0; transform: scale(1.5) rotate(15deg); }
+            }
+        </style>
+    </div>
+
+    <!-- CANVAS BG -->
+    <canvas id="drawing-canvas" class="fixed top-0 left-0 w-full h-full -z-5 touch-none"></canvas>
+    <div class="fixed bottom-4 left-4 z-40 bg-white border-2 border-black p-2 rounded text-xs font-bold opacity-70 pointer-events-none shadow-md">Tip: Draw on the background!</div>
+
+    <!-- NAV -->
+    <nav class="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-4 pointer-events-none">
+        <div class="max-w-7xl mx-auto sketch-box bg-white px-6 py-3 flex justify-between items-center pointer-events-auto transform rotate-1">
+            <div class="flex items-center gap-2 cursor-pointer transition-transform active:scale-95" onclick="router.navigate('home')">
+                <i data-lucide="sun" class="w-8 h-8 text-black"></i>
+                <span class="text-2xl font-bold tracking-widest">Helios<span class="text-blue-600">Bot</span></span>
+            </div>
+            <div class="hidden md:flex gap-6 text-xl font-bold" id="nav-links">
+                <button onclick="router.navigate('home')" class="hover:text-blue-600 relative group">Home<span class="absolute left-0 bottom-0 w-0 h-1 bg-blue-600 transition-all group-hover:w-full"></span></button>
+                <button onclick="router.navigate('features')" class="hover:text-blue-600 relative group">Features<span class="absolute left-0 bottom-0 w-0 h-1 bg-blue-600 transition-all group-hover:w-full"></span></button>
+                <button onclick="router.navigate('commands')" class="hover:text-blue-600 relative group">Commands<span class="absolute left-0 bottom-0 w-0 h-1 bg-blue-600 transition-all group-hover:w-full"></span></button>
+            </div>
+            <button class="sketch-btn magnetic-btn px-6 py-2 font-bold text-lg bg-[#5865F2] text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">ADD HELIOS</button>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <div id="content-wrapper">
+        <main id="app" class="pt-28 min-h-screen pb-12 relative z-10"></main>
+        
+        <!-- FOOTER & GAME -->
+        <footer class="relative mt-20 pt-16 pb-10 border-t-4 border-black bg-white transform -skew-y-1">
+            <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-yellow-300 border-4 border-black px-6 py-2 rotate-2 font-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                BORED? PLAY THIS!
+            </div>
+
+            <div class="max-w-4xl mx-auto px-4 text-center">
+                
+                <!-- GAME CANVAS WRAPPER -->
+                <div class="sketch-box bg-gray-50 p-2 mb-12 relative overflow-hidden inline-block w-full max-w-2xl mx-auto" style="border-radius: 4px;">
+                    <canvas id="footer-game" width="600" height="150" class="w-full h-[150px] cursor-pointer touch-manipulation bg-white border-2 border-dashed border-gray-300"></canvas>
+                    
+                    <!-- GAME OVERLAY -->
+                    <div id="game-overlay-ui" class="absolute inset-0 flex flex-col items-center justify-center bg-black/10 backdrop-blur-[1px]">
+                        <p class="font-black text-2xl mb-2">SKETCH RUNNER</p>
+                        <button onclick="startGame()" class="sketch-btn px-6 py-2 text-lg font-bold">CLICK TO START</button>
+                        <p class="text-xs font-bold mt-2 opacity-60">Space / Tap to Jump</p>
+                    </div>
+                    
+                    <div class="absolute top-2 right-4 font-black text-xl font-mono">SCORE: <span id="score-display">0</span></div>
+                </div>
+
+                <!-- SOCIALS & LINKS -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center mb-8">
+                    <div class="text-left">
+                        <h3 class="font-black text-2xl mb-2">HeliosBot</h3>
+                        <p class="text-sm opacity-70">The only discord bot drawn entirely by a tired developer on a napkin.</p>
+                    </div>
+                    <div class="flex justify-center gap-6">
+                        <a href="https://discord.gg/codex" target="_blank" class="sketch-btn w-12 h-12 flex items-center justify-center rounded-full bg-[#5865F2] hover:rotate-6 text-white group" title="Join Discord">
+                            <!-- Real Discord Logo SVG -->
+                            <svg class="w-6 h-6 fill-current group-hover:animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36">
+                                <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.11,77.11,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.89,105.89,0,0,0,126.6,80.22c2.36-24.44-3.11-48.55-18.9-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+                            </svg>
+                        </a>
+                        <a href="https://github.com/zenittj" target="_blank" class="sketch-btn w-12 h-12 flex items-center justify-center rounded-full bg-[#333] hover:rotate-6 text-white" title="View on GitHub">
+                            <i data-lucide="github"></i>
+                        </a>
+                    </div>
+                    <div class="text-right">
+                        <h4 class="font-bold text-lg">Legal Stuff</h4>
+                        <div class="flex flex-col text-sm opacity-70">
+                            <button onclick="router.navigate('terms')" class="hover:underline decoration-wavy text-right">Terms of Service</button>
+                            <button onclick="router.navigate('privacy')" class="hover:underline decoration-wavy text-right">Privacy Policy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t-2 border-dashed border-gray-300 pt-8 text-sm font-bold">
+                    <p class="opacity-60">&copy; 2024 Helios Bot. No rights reserved. Go nuts.</p>
+                    <p class="mt-2 text-base">
+                        Made with ❤️ by 
+                        <a href="https://instagram.com/imakaszx" target="_blank" class="text-blue-600 hover:underline decoration-wavy">Zenit</a> 
+                        & 
+                        <a href="https://discord.gg/codexdev" target="_blank" class="text-blue-600 hover:underline decoration-wavy">Codex Dev</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- TEMPLATES -->
+    <template id="view-home">
+        <div class="page-transition">
+            <section class="min-h-[75vh] flex flex-col items-center justify-center px-4 relative">
+                <div class="absolute top-20 left-[10%] text-6xl opacity-30 parallax animate-float" data-speed="0.05">☀️</div>
+                <div class="absolute top-40 right-[10%] text-7xl opacity-30 parallax animate-float-delayed" data-speed="-0.08">🛡️</div>
+                <div class="absolute bottom-40 left-[15%] text-6xl opacity-30 parallax animate-float" data-speed="0.1">🎵</div>
+
+                <div class="max-w-5xl mx-auto text-center relative z-10">
+                    <div class="inline-block mb-6 px-6 py-2 border-4 border-black bg-yellow-300 transform -rotate-2 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] reveal-on-scroll">
+                        <span class="font-black text-lg tracking-wider">★ TRUSTED BY 100K+ SERVERS</span>
+                    </div>
+                    <h1 class="text-6xl md:text-[9rem] font-black mb-4 leading-[0.9] wobbly-text select-none drop-shadow-lg reveal-on-scroll stagger-delay">
+                        THE ULTIMATE<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600" style="-webkit-text-stroke: 3px black;">ALL-IN-ONE.</span>
+                    </h1>
+                    <p class="text-xl md:text-3xl mb-12 max-w-3xl mx-auto font-bold text-gray-800 transform rotate-1 mt-6 bg-white inline-block px-6 py-4 border-2 border-black shadow-md reveal-on-scroll stagger-delay">
+                        AutoMod. Leveling. Music. Tickets. Fun.<br>Everything your server needs, in one chaotic package.
+                    </p>
+                    <div class="flex flex-col md:flex-row justify-center gap-6 items-center reveal-on-scroll stagger-delay">
+                        <button class="sketch-btn magnetic-btn px-10 py-4 text-2xl font-black bg-black text-white hover:bg-white hover:text-black border-4 border-black transition-colors shadow-[8px_8px_0px_0px_#5865F2]">ADD HELIOS</button>
+                        <button onclick="router.navigate('features')" class="text-2xl font-bold underline decoration-4 decoration-wavy decoration-blue-500 hover:text-blue-600 transition-colors">Explore Features →</button>
+                    </div>
+                </div>
+            </section>
+            <div class="relative h-20 overflow-hidden mt-8 bg-yellow-300 border-y-4 border-black transform -rotate-1 origin-left w-[110%] -ml-[5%] shadow-lg reveal-on-scroll">
+                <div class="flex items-center h-full animate-[marquee_15s_linear_infinite] whitespace-nowrap font-black text-3xl">
+                    <span class="mx-6">★ AUTOMOD</span><span class="mx-6">★ LEVELING SYSTEM</span><span class="mx-6">★ TICKET SUPPORT</span><span class="mx-6">★ HIGH QUALITY MUSIC</span><span class="mx-6">★ MEMES & FUN</span><span class="mx-6">★ AUTOMOD</span>
+                </div>
+                <style>@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }</style>
+            </div>
+            <section class="py-24 text-center px-4">
+                <h2 class="text-5xl font-black mb-12 reveal-on-scroll">One Bot. Infinite Chaos.</h2>
+                <div class="flex justify-center gap-6 flex-wrap">
+                    <div class="tilt-card w-72 h-48 sketch-box bg-yellow-100 p-6 flex flex-col items-center justify-center cursor-pointer reveal-on-scroll stagger-delay group">
+                        <i data-lucide="shield-check" class="w-16 h-16 mb-4 text-black group-hover:scale-110 transition-transform"></i>
+                        <span class="font-bold text-2xl">Auto-Mod</span>
+                    </div>
+                    <div class="tilt-card w-72 h-48 sketch-box bg-blue-100 p-6 flex flex-col items-center justify-center cursor-pointer reveal-on-scroll stagger-delay group">
+                        <i data-lucide="music" class="w-16 h-16 mb-4 text-black group-hover:scale-110 transition-transform"></i>
+                        <span class="font-bold text-2xl">Music Player</span>
+                    </div>
+                    <div class="tilt-card w-72 h-48 sketch-box bg-green-100 p-6 flex flex-col items-center justify-center cursor-pointer reveal-on-scroll stagger-delay group">
+                        <i data-lucide="ticket" class="w-16 h-16 mb-4 text-black group-hover:scale-110 transition-transform"></i>
+                        <span class="font-bold text-2xl">Tickets</span>
+                    </div>
+                    <div class="tilt-card w-72 h-48 sketch-box bg-pink-100 p-6 flex flex-col items-center justify-center cursor-pointer reveal-on-scroll stagger-delay group" onclick="router.navigate('features')">
+                        <i data-lucide="plus" class="w-16 h-16 mb-4 text-black group-hover:scale-110 transition-transform"></i>
+                        <span class="font-bold text-2xl">And More...</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </template>
+
+    <template id="view-features">
+        <div class="page-transition max-w-6xl mx-auto px-4 py-10">
+            <div class="text-center mb-16">
+                 <h1 class="text-6xl md:text-8xl font-black transform -rotate-2 reveal-on-scroll"><span class="bg-black text-white px-6 py-2 shadow-[8px_8px_0px_0px_#FFEB3B]">HELIOS FEATURES</span></h1>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+                <!-- Features Grid -->
+                <div class="tilt-card sketch-box p-8 bg-yellow-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">🛡️</div>
+                    <h3 class="text-3xl font-bold mb-3">Advanced AutoMod</h3>
+                    <p class="text-lg">Keeps your server safe from raiders, spammers, and bad vibes automatically.</p>
+                </div>
+                <div class="tilt-card sketch-box p-8 bg-blue-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">🎫</div>
+                    <h3 class="text-3xl font-bold mb-3">Ticket System</h3>
+                    <p class="text-lg">Professional support system for your community, drawn on a napkin.</p>
+                </div>
+                <div class="tilt-card sketch-box p-8 bg-red-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">🎵</div>
+                    <h3 class="text-3xl font-bold mb-3">High-Res Music</h3>
+                    <p class="text-lg">Stream your favorite tracks with crystal clear quality and no lag.</p>
+                </div>
+                <div class="tilt-card sketch-box p-8 bg-green-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">📈</div>
+                    <h3 class="text-3xl font-bold mb-3">XP & Leveling</h3>
+                    <p class="text-lg">Reward active members with XP, levels, and custom roles.</p>
+                </div>
+                <div class="tilt-card sketch-box p-8 bg-purple-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">🎲</div>
+                    <h3 class="text-3xl font-bold mb-3">Fun & Games</h3>
+                    <p class="text-lg">Economy, memes, trivia, and minigames to kill boredom.</p>
+                </div>
+                <div class="tilt-card sketch-box p-8 bg-orange-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">⚙️</div>
+                    <h3 class="text-3xl font-bold mb-3">Full Control</h3>
+                    <p class="text-lg">Customize every aspect of Helios to fit your server's needs.</p>
+                </div>
+                 <div class="tilt-card sketch-box p-8 bg-pink-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">📊</div>
+                    <h3 class="text-3xl font-bold mb-3">Dashboard</h3>
+                    <p class="text-lg">Web-based panel to configure everything without typing commands.</p>
+                </div>
+                 <div class="tilt-card sketch-box p-8 bg-teal-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">🔔</div>
+                    <h3 class="text-3xl font-bold mb-3">Social Alerts</h3>
+                    <p class="text-lg">Get notified when your favorite streamer goes live or uploads.</p>
+                </div>
+                 <div class="tilt-card sketch-box p-8 bg-indigo-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">📝</div>
+                    <h3 class="text-3xl font-bold mb-3">Logging</h3>
+                    <p class="text-lg">Track deleted messages, member changes, and more.</p>
+                </div>
+                 <div class="tilt-card sketch-box p-8 bg-lime-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">🎉</div>
+                    <h3 class="text-3xl font-bold mb-3">Giveaways</h3>
+                    <p class="text-lg">Host giveaways with requirements, roles, and automated drawing.</p>
+                </div>
+                 <div class="tilt-card sketch-box p-8 bg-gray-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">🤖</div>
+                    <h3 class="text-3xl font-bold mb-3">Auto-Roles</h3>
+                    <p class="text-lg">Give new members roles automatically or via reaction buttons.</p>
+                </div>
+                 <div class="tilt-card sketch-box p-8 bg-cyan-100 reveal-on-scroll stagger-delay">
+                    <div class="text-5xl mb-4 transform transition-transform group-hover:scale-110">💾</div>
+                    <h3 class="text-3xl font-bold mb-3">Backups</h3>
+                    <p class="text-lg">Save your server layout and restore it if things go wrong.</p>
+                </div>
+            </div>
+            <div class="text-center mt-24 reveal-on-scroll">
+                <button onclick="router.navigate('home')" class="sketch-btn px-10 py-4 text-xl font-bold bg-white text-black border-2 border-black hover:bg-gray-100">← GO BACK</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="view-commands">
+        <div class="page-transition max-w-4xl mx-auto px-4 py-10">
+            <h1 class="text-7xl font-black text-center mb-10 reveal-on-scroll">THE MANUAL</h1>
+            <div class="sketch-box bg-white p-6 mb-12 transform rotate-1 reveal-on-scroll sticky top-24 z-30">
+                <div class="flex flex-col md:flex-row gap-4 items-center">
+                    <i data-lucide="search" class="w-6 h-6 text-gray-400"></i>
+                    <input type="text" placeholder="Search 250+ commands..." class="sketch-input flex-1 text-2xl font-bold bg-transparent" onkeyup="filterCommands(this.value)">
+                </div>
+            </div>
+            <div class="space-y-4" id="command-list-container"></div>
+             <div class="text-center mt-12"><button onclick="router.navigate('home')" class="sketch-btn px-8 py-3 text-xl font-bold">← GO BACK</button></div>
+        </div>
+    </template>
+
+    <!-- TERMS TEMPLATE -->
+    <template id="view-terms">
+        <div class="page-transition max-w-4xl mx-auto px-4 py-10">
+            <h1 class="text-6xl font-black text-center mb-12 transform -rotate-1">TERMS OF SERVICE</h1>
+            <div class="sketch-box bg-white p-8 md:p-12 reveal-on-scroll">
+                <ol class="list-decimal list-outside space-y-6 pl-4 text-lg font-bold text-gray-700">
+                    <li><span class="text-black">Acceptance of Terms:</span> By inviting Helios to your server, you agree to these sketchy terms.</li>
+                    <li><span class="text-black">Usage License:</span> You are granted a limited license to use the bot. Don't break it.</li>
+                    <li><span class="text-black">User Conduct:</span> Don't use the bot to spam, raid, or be generally annoying.</li>
+                    <li><span class="text-black">Availability:</span> We aim for 99% uptime, but sometimes the hamster wheel breaks.</li>
+                    <li><span class="text-black">Data Collection:</span> We collect IDs and messages for caching. See Privacy Policy.</li>
+                    <li><span class="text-black">Termination:</span> We can ban you from using the bot if you are mean to it.</li>
+                    <li><span class="text-black">Premium Features:</span> Refunds are not provided for "accidentally" buying premium.</li>
+                    <li><span class="text-black">Limitation of Liability:</span> If your server explodes, it wasn't us. Probably.</li>
+                    <li><span class="text-black">Changes to Terms:</span> We can change these terms whenever we feel like it.</li>
+                    <li><span class="text-black">Contact:</span> Complaints? Send them to the void (or our support server).</li>
+                </ol>
+            </div>
+            <div class="text-center mt-12"><button onclick="router.navigate('home')" class="sketch-btn px-8 py-3 text-xl font-bold">← GO BACK</button></div>
+        </div>
+    </template>
+
+    <!-- PRIVACY TEMPLATE -->
+    <template id="view-privacy">
+        <div class="page-transition max-w-4xl mx-auto px-4 py-10">
+            <h1 class="text-6xl font-black text-center mb-12 transform rotate-1">PRIVACY POLICY</h1>
+            <div class="sketch-box bg-white p-8 md:p-12 reveal-on-scroll">
+                <ol class="list-decimal list-outside space-y-6 pl-4 text-lg font-bold text-gray-700">
+                    <li><span class="text-black">Data We Collect:</span> User IDs, Server IDs, and message content for automod.</li>
+                    <li><span class="text-black">How We Use Data:</span> To make the bot actually work and not be a paperweight.</li>
+                    <li><span class="text-black">Data Storage:</span> Your data is stored on a server that is definitely not a potato.</li>
+                    <li><span class="text-black">Data Sharing:</span> We don't sell your data. Who would buy it anyway?</li>
+                    <li><span class="text-black">Cookies:</span> We love cookies, but this bot doesn't use browser cookies.</li>
+                    <li><span class="text-black">Security:</span> We use encryption, but nothing is unhackable. Good luck though.</li>
+                    <li><span class="text-black">Data Deletion:</span> You can request data deletion via the support server.</li>
+                    <li><span class="text-black">Third Parties:</span> We use YouTube API for music. They have their own rules.</li>
+                    <li><span class="text-black">Children's Privacy:</span> Not for kids under 13. Go do your homework.</li>
+                    <li><span class="text-black">Consent:</span> Using the bot means you consent to this nonsense.</li>
+                </ol>
+            </div>
+            <div class="text-center mt-12"><button onclick="router.navigate('home')" class="sketch-btn px-8 py-3 text-xl font-bold">← GO BACK</button></div>
+        </div>
+    </template>
+
+    <script>
+        // --- SCROLL & INTRO ---
+        const lenis = new Lenis({ duration: 1.2, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), direction: 'vertical', smooth: true });
+        const contentWrapper = document.getElementById('content-wrapper');
+        let currentSkew = 0, currentRotate = 0;
+        function raf(time) {
+            lenis.raf(time);
+            const velocity = lenis.velocity || 0;
+            currentSkew += (velocity * 0.05 - currentSkew) * 0.1;
+            currentRotate += (velocity * 0.02 - currentRotate) * 0.1;
+            if(Math.abs(currentSkew) > 0.01) contentWrapper.style.transform = `skewY(${currentSkew}deg) rotateX(${currentRotate}deg)`;
+            else contentWrapper.style.transform = `none`;
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+
+        function initSmashIntro() {
+            // Timing aligned with CSS Animation (Impact at approx 2.2s)
+            // 78% of 2.5s animation = ~1.95s, but accounting for delays lets trigger at 2.0s
+            setTimeout(() => {
+                const overlay = document.getElementById('intro-overlay');
+                overlay.classList.add('shake-active');
+                document.getElementById('cracks').classList.add('cracks-active');
+                const t = document.getElementById('intro-loading');
+                t.innerText = "HELIOS ONLINE."; t.style.color = "#ff4d4d"; t.style.transform = "scale(1.2)";
+                
+                // Fade out faster after impact
+                setTimeout(() => { 
+                    overlay.classList.add('intro-done'); 
+                    setTimeout(()=>overlay.style.display='none', 500); 
+                    initScrollReveal(); 
+                }, 1000);
+            }, 2000); // Trigger impact effects at 2.0s
+        }
+
+        function initScrollReveal() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        if(entry.target.classList.contains('reveal-on-scroll')) entry.target.classList.add('is-visible');
+                        if(entry.target.classList.contains('sketch-box')) entry.target.classList.add('mobile-active');
+                    } else {
+                         if(entry.target.classList.contains('sketch-box')) entry.target.classList.remove('mobile-active');
+                    }
+                });
+            }, { threshold: 0.15, rootMargin: "0px 0px -50px 0px" });
+            document.querySelectorAll('.reveal-on-scroll, .sketch-box').forEach(el => observer.observe(el));
+        }
+
+        // --- DRAWING ---
+        const drawCanvas = document.getElementById('drawing-canvas');
+        const drawCtx = drawCanvas.getContext('2d');
+        let isDrawing = false;
+        function resizeCanvas() { drawCanvas.width = window.innerWidth; drawCanvas.height = window.innerHeight; drawCtx.lineJoin = 'round'; drawCtx.lineCap = 'round'; drawCtx.lineWidth = 4; drawCtx.strokeStyle = '#2a2a2a'; }
+        window.addEventListener('resize', resizeCanvas); resizeCanvas();
+        function startDraw(e) { isDrawing=true; const p=getPos(e); drawCtx.moveTo(p.x,p.y); drawCtx.beginPath(); }
+        function draw(e) { if(!isDrawing)return; e.preventDefault(); const p=getPos(e); drawCtx.lineTo(p.x+(Math.random()-0.5)*2, p.y+(Math.random()-0.5)*2); drawCtx.stroke(); }
+        function getPos(e) { return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
+        drawCanvas.addEventListener('mousedown', startDraw); window.addEventListener('mouseup', ()=>isDrawing=false); drawCanvas.addEventListener('mousemove', draw);
+        drawCanvas.addEventListener('touchstart', startDraw, {passive:false}); window.addEventListener('touchend', ()=>isDrawing=false); drawCanvas.addEventListener('touchmove', draw, {passive:false});
+
+        // --- MAGNETIC ---
+        function initMagneticButtons() {
+            if(window.matchMedia("(hover: hover)").matches) {
+                document.querySelectorAll('.magnetic-btn').forEach(btn => {
+                    btn.addEventListener('mousemove', (e) => {
+                        const rect = btn.getBoundingClientRect();
+                        gsap.to(btn, { x: (e.clientX-rect.left-rect.width/2)*0.3, y: (e.clientY-rect.top-rect.height/2)*0.3, duration: 0.3 });
+                    });
+                    btn.addEventListener('mouseleave', () => gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.3)' }));
+                });
+            }
+        }
+
+        // --- ROUTER ---
+        const app = document.getElementById('app');
+        // Pre-fetch templates
+        const views = { 
+            home: document.getElementById('view-home'), 
+            features: document.getElementById('view-features'), 
+            commands: document.getElementById('view-commands'),
+            terms: document.getElementById('view-terms'),
+            privacy: document.getElementById('view-privacy')
+        };
+        const router = {
+            navigate: (viewName) => {
+                const template = document.getElementById(`view-${viewName}`);
+                if(!template) return;
+                app.innerHTML = ''; app.appendChild(template.content.cloneNode(true));
+                window.scrollTo(0,0); lucide.createIcons(); applyRandomBorderRadius(); initMagneticButtons();
+                setTimeout(initScrollReveal, 100);
+                if (viewName === 'commands') initCommandList();
+                if (viewName === 'features' || viewName === 'home') if(window.matchMedia("(hover: hover)").matches) initTiltEffect();
+            }
+        };
+
+        function applyRandomBorderRadius() {
+            document.querySelectorAll('.sketch-box, .sketch-btn').forEach(el => {
+                if(el.dataset.sketched) return;
+                const r = () => Math.floor(Math.random()*12+4);
+                el.style.borderRadius = `${255-r()}px ${15+r()}px ${225-r()}px ${15+r()}px / ${15+r()}px ${225-r()}px ${15+r()}px ${255-r()}px`;
+                el.dataset.sketched = "true";
+            });
+        }
+        function initTiltEffect() {
+            document.querySelectorAll('.tilt-card').forEach(card => {
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    card.style.transform = `perspective(1000px) rotateX(${(0.5 - (e.clientY-rect.top)/rect.height)*20}deg) rotateY(${((e.clientX-rect.left)/rect.width - 0.5)*20}deg) scale3d(1.05, 1.05, 1.05)`;
+                });
+                card.addEventListener('mouseleave', () => card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)');
+            });
+        }
+
+        // --- COMMANDS DATA ---
+        const commandsDB = [
+            // MODERATION
+            { name: '/ban', desc: 'Ban a user from the server.' }, { name: '/kick', desc: 'Kick a user from the server.' }, { name: '/mute', desc: 'Timeout a user.' }, { name: '/unmute', desc: 'Remove timeout.' }, { name: '/warn', desc: 'Warn a user.' }, { name: '/purge', desc: 'Delete multiple messages.' }, { name: '/lock', desc: 'Lock the current channel.' }, { name: '/unlock', desc: 'Unlock the channel.' }, { name: '/slowmode', desc: 'Set channel slowmode.' }, { name: '/nuke', desc: 'Clone & delete channel.' }, { name: '/role', desc: 'Add/Remove role.' }, { name: '/modlogs', desc: 'View moderation history.' }, { name: '/banlist', desc: 'View banned users.' },
+            // ECONOMY
+            { name: '/bal', desc: 'Check balance.' }, { name: '/work', desc: 'Work for money.' }, { name: '/daily', desc: 'Claim daily reward.' }, { name: '/weekly', desc: 'Claim weekly reward.' }, { name: '/rob', desc: 'Rob another user.' }, { name: '/pay', desc: 'Send money to user.' }, { name: '/shop', desc: 'View item shop.' }, { name: '/buy', desc: 'Buy an item.' }, { name: '/sell', desc: 'Sell an item.' }, { name: '/inv', desc: 'View inventory.' }, { name: '/deposit', desc: 'Deposit to bank.' }, { name: '/withdraw', desc: 'Withdraw from bank.' }, { name: '/gamble', desc: 'Bet money.' }, { name: '/slots', desc: 'Play slots.' }, { name: '/roulette', desc: 'Play roulette.' }, { name: '/blackjack', desc: 'Play blackjack.' }, { name: '/coinflip', desc: 'Flip a coin.' }, { name: '/fish', desc: 'Go fishing.' }, { name: '/hunt', desc: 'Go hunting.' }, { name: '/dig', desc: 'Dig for treasure.' }, { name: '/farm', desc: 'Farm crops.' }, { name: '/craft', desc: 'Craft items.' }, { name: '/leaderboard', desc: 'View top rich users.' },
+            // MUSIC
+            { name: '/play', desc: 'Play a song.' }, { name: '/skip', desc: 'Skip current song.' }, { name: '/stop', desc: 'Stop playing.' }, { name: '/pause', desc: 'Pause music.' }, { name: '/resume', desc: 'Resume music.' }, { name: '/queue', desc: 'View queue.' }, { name: '/loop', desc: 'Loop song/queue.' }, { name: '/shuffle', desc: 'Shuffle queue.' }, { name: '/volume', desc: 'Change volume.' }, { name: '/nowplaying', desc: 'View current song.' }, { name: '/lyrics', desc: 'Get song lyrics.' }, { name: '/seek', desc: 'Seek to timestamp.' }, { name: '/filter', desc: 'Apply audio filter.' }, { name: '/bassboost', desc: 'Boost bass.' }, { name: '/nightcore', desc: 'Nightcore effect.' }, { name: '/vaporwave', desc: 'Vaporwave effect.' }, { name: '/save', desc: 'Save current song.' }, { name: '/playlist', desc: 'Manage playlists.' },
+            // FUN
+            { name: '/meme', desc: 'Get a random meme.' }, { name: '/joke', desc: 'Get a random joke.' }, { name: '/cat', desc: 'Random cat image.' }, { name: '/dog', desc: 'Random dog image.' }, { name: '/8ball', desc: 'Ask the magic 8ball.' }, { name: '/roll', desc: 'Roll a dice.' }, { name: '/ship', desc: 'Ship two users.' }, { name: '/slap', desc: 'Slap a user.' }, { name: '/hug', desc: 'Hug a user.' }, { name: '/kiss', desc: 'Kiss a user.' }, { name: '/pat', desc: 'Pat a user.' }, { name: '/poke', desc: 'Poke a user.' }, { name: '/cuddle', desc: 'Cuddle a user.' }, { name: '/kill', desc: 'Kill a user (fake).' }, { name: '/reverse', desc: 'Reverse text.' }, { name: '/emojify', desc: 'Text to emojis.' }, { name: '/ascii', desc: 'Text to ASCII art.' }, { name: '/owofy', desc: 'OwOify text.' }, { name: '/roast', desc: 'Roast a user.' }, { name: '/hack', desc: 'Fake hack user.' }, { name: '/trivia', desc: 'Start trivia game.' }, { name: '/quiz', desc: 'Start quiz.' }, { name: '/tictactoe', desc: 'Play TicTacToe.' }, { name: '/connect4', desc: 'Play Connect4.' }, { name: '/chess', desc: 'Play Chess.' }, { name: '/hangman', desc: 'Play Hangman.' }, { name: '/aki', desc: 'Play Akinator.' },
+            // UTILITY
+            { name: '/ping', desc: 'Check bot latency.' }, { name: '/uptime', desc: 'Check bot uptime.' }, { name: '/help', desc: 'View help menu.' }, { name: '/invite', desc: 'Get invite link.' }, { name: '/support', desc: 'Get support server.' }, { name: '/vote', desc: 'Vote for bot.' }, { name: '/userinfo', desc: 'View user info.' }, { name: '/serverinfo', desc: 'View server info.' }, { name: '/botinfo', desc: 'View bot info.' }, { name: '/avatar', desc: 'Get user avatar.' }, { name: '/icon', desc: 'Get server icon.' }, { name: '/banner', desc: 'Get user banner.' }, { name: '/roles', desc: 'List server roles.' }, { name: '/emojis', desc: 'List server emojis.' }, { name: '/weather', desc: 'Check weather.' }, { name: '/translate', desc: 'Translate text.' }, { name: '/remind', desc: 'Set a reminder.' }, { name: '/poll', desc: 'Create a poll.' }, { name: '/calculator', desc: 'Use calculator.' }, { name: '/urban', desc: 'Search Urban Dictionary.' }, { name: '/google', desc: 'Search Google.' }, { name: '/youtube', desc: 'Search YouTube.' },
+            // IMAGE
+            { name: '/trigger', desc: 'Triggered effect.' }, { name: '/wasted', desc: 'GTA Wasted effect.' }, { name: '/jail', desc: 'Jail bars effect.' }, { name: '/invert', desc: 'Invert colors.' }, { name: '/greyscale', desc: 'Greyscale effect.' }, { name: '/blur', desc: 'Blur image.' }, { name: '/pixelate', desc: 'Pixelate image.' }, { name: '/deepfry', desc: 'Deepfry image.' }, { name: '/communism', desc: 'Communism overlay.' }, { name: '/gay', desc: 'Rainbow overlay.' }, { name: '/tweet', desc: 'Fake tweet.' }, { name: '/youtube-comment', desc: 'Fake YT comment.' },
+            // LEVELING
+            { name: '/rank', desc: 'View rank card.' }, { name: '/leaderboard', desc: 'View level top.' }, { name: '/xp', desc: 'Check XP.' }, { name: '/rewards', desc: 'View level rewards.' }, { name: '/givexp', desc: 'Give XP to user.' }, { name: '/removexp', desc: 'Remove XP.' }, { name: '/resetxp', desc: 'Reset user XP.' },
+            // ADMIN
+            { name: '/prefix', desc: 'Set bot prefix.' }, { name: '/language', desc: 'Set language.' }, { name: '/welcome', desc: 'Setup welcome.' }, { name: '/goodbye', desc: 'Setup goodbye.' }, { name: '/autorole', desc: 'Setup auto-role.' }, { name: '/logging', desc: 'Setup logging.' }, { name: '/tickets', desc: 'Setup tickets.' }, { name: '/reactionroles', desc: 'Setup reaction roles.' }, { name: '/giveaway', desc: 'Manage giveaways.' }, { name: '/verification', desc: 'Setup verification.' }, { name: '/antiraid', desc: 'Config anti-raid.' }, { name: '/antispam', desc: 'Config anti-spam.' }, { name: '/whitelist', desc: 'Whitelist channels.' }, { name: '/blacklist', desc: 'Blacklist channels.' }, { name: '/disable', desc: 'Disable command.' }, { name: '/enable', desc: 'Enable command.' }
+        ];
+
+        function initCommandList() {
+            const container = document.getElementById('command-list-container');
+            container.innerHTML = '';
+            commandsDB.forEach(cmd => {
+                const el = document.createElement('div');
+                el.className = 'sketch-box p-4 bg-white flex justify-between items-center hover:bg-gray-50 reveal-on-scroll stagger-delay';
+                el.style.transform = `rotate(${(Math.random()-0.5)*2}deg)`;
+                el.innerHTML = `<span class="font-bold text-2xl text-blue-600">${cmd.name}</span><div class="text-xl font-bold">${cmd.desc}</div>`;
+                container.appendChild(el);
+            });
+            applyRandomBorderRadius();
+            setTimeout(initScrollReveal, 100);
+        }
+
+        function filterCommands(text) {
+            const filtered = commandsDB.filter(c => c.name.toLowerCase().includes(text.toLowerCase()) || c.desc.toLowerCase().includes(text.toLowerCase()));
+            const container = document.getElementById('command-list-container');
+            container.innerHTML = '';
+            filtered.forEach(cmd => {
+                const el = document.createElement('div');
+                el.className = 'sketch-box p-4 bg-white flex justify-between items-center hover:bg-gray-50';
+                el.innerHTML = `<span class="font-bold text-2xl text-blue-600">${cmd.name}</span><div class="text-xl font-bold">${cmd.desc}</div>`;
+                container.appendChild(el);
+            });
+            applyRandomBorderRadius();
+        }
+
+        // --- FOOTER GAME LOGIC ---
+        const gameCanvas = document.getElementById('footer-game');
+        const gameCtx = gameCanvas.getContext('2d');
+        const scoreEl = document.getElementById('score-display');
+        const overlayUI = document.getElementById('game-overlay-ui');
+        
+        let gameRunning = false, animationId, score = 0, frame = 0, gameSpeed = 4;
+        const dino = { x: 50, y: 110, w: 20, h: 20, dy: 0, jumpPower: -10, grounded: true };
+        const gravity = 0.6;
+        let obstacles = [];
+
+        function startGame() {
+            if(gameRunning) return;
+            gameRunning = true; overlayUI.classList.add('hidden'); score = 0; gameSpeed = 4; obstacles = []; dino.y = 110; dino.dy = 0; scoreEl.innerText = '0';
+            gameLoop();
+        }
+        function jump() { if (dino.grounded) { dino.dy = dino.jumpPower; dino.grounded = false; } }
+        gameCanvas.addEventListener('mousedown', jump);
+        gameCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, {passive: false});
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); if(!gameRunning) startGame(); else jump(); } });
+
+        function drawDino() {
+            gameCtx.fillStyle = '#2a2a2a'; gameCtx.fillRect(dino.x, dino.y, dino.w, dino.h);
+            gameCtx.fillStyle = 'white'; gameCtx.fillRect(dino.x + 12, dino.y + 4, 4, 4);
+            gameCtx.strokeStyle = '#2a2a2a'; gameCtx.lineWidth = 2;
+            gameCtx.beginPath(); gameCtx.moveTo(dino.x+4, dino.y+20); 
+            if(frame % 10 < 5 || !dino.grounded) { gameCtx.lineTo(dino.x, dino.y+28); gameCtx.stroke(); gameCtx.beginPath(); gameCtx.moveTo(dino.x+16, dino.y+20); gameCtx.lineTo(dino.x+12, dino.y+28); gameCtx.stroke(); } 
+            else { gameCtx.lineTo(dino.x+8, dino.y+28); gameCtx.stroke(); gameCtx.beginPath(); gameCtx.moveTo(dino.x+16, dino.y+20); gameCtx.lineTo(dino.x+20, dino.y+28); gameCtx.stroke(); }
+        }
+        function drawObstacle(obs) {
+            gameCtx.fillStyle = '#ff4d4d'; gameCtx.beginPath(); gameCtx.moveTo(obs.x, obs.y + obs.h); gameCtx.lineTo(obs.x + obs.w / 2, obs.y); gameCtx.lineTo(obs.x + obs.w, obs.y + obs.h); gameCtx.closePath(); gameCtx.fill(); gameCtx.stroke();
+        }
+        function gameOver() { gameRunning = false; cancelAnimationFrame(animationId); overlayUI.classList.remove('hidden'); overlayUI.querySelector('p').innerText = "GAME OVER!"; overlayUI.querySelector('button').innerText = "TRY AGAIN"; }
+        function gameLoop() {
+            if (!gameRunning) return;
+            animationId = requestAnimationFrame(gameLoop); gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height); frame++;
+            gameCtx.beginPath(); gameCtx.moveTo(0, 130); gameCtx.lineTo(600, 130); gameCtx.strokeStyle = '#000'; gameCtx.lineWidth = 3; gameCtx.stroke();
+            dino.dy += gravity; dino.y += dino.dy;
+            if (dino.y > 110) { dino.y = 110; dino.dy = 0; dino.grounded = true; }
+            drawDino();
+            if (frame % 100 === 0 && Math.random() > 0.3) obstacles.push({ x: 600, y: 105, w: 20, h: 25 });
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i]; obs.x -= gameSpeed; drawObstacle(obs);
+                if (dino.x < obs.x + obs.w && dino.x + dino.w > obs.x && dino.y < obs.y + obs.h && dino.y + dino.h > obs.y) gameOver();
+                if (obs.x + obs.w < 0) { obstacles.splice(i, 1); i--; score++; scoreEl.innerText = score; if(score % 5 === 0) gameSpeed += 0.5; }
+            }
+        }
+        gameCtx.font = "20px 'Patrick Hand'"; gameCtx.fillText("Waiting to play...", 240, 80);
+
+        window.onload = () => { router.navigate('home'); initSmashIntro(); };
+    </script>
+</body>
+</html>
